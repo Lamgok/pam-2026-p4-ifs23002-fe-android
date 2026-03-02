@@ -14,7 +14,6 @@ import org.delcom.pam_p4_ifs23002.network.sukus.data.ResponseSukusData
 import org.delcom.pam_p4_ifs23002.network.sukus.service.ISukusRepository
 import javax.inject.Inject
 
-// Prefixing with 'Sukus' to avoid Redeclaration error with PlantViewModel
 sealed interface SukusProfileUIState {
     data class Success(val data: org.delcom.pam_p4_ifs23002.network.sukus.data.ResponseProfile) : SukusProfileUIState
     data class Error(val message: String) : SukusProfileUIState
@@ -54,6 +53,13 @@ class SukusViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(UIStateSukus())
     val uiState = _uiState.asStateFlow()
+
+    // Fungsi untuk mereset status aksi agar snackbar tidak muncul berulang
+    fun resetSukuAction() {
+        _uiState.update { state ->
+            state.copy(sukuAction = SukuActionUIState.Idle)
+        }
+    }
 
     fun getProfile() {
         viewModelScope.launch {
@@ -128,7 +134,7 @@ class SukusViewModel @Inject constructor(
                 }.fold(
                     onSuccess = {
                         if (it.status == "success" && it.data != null) {
-                            SukuActionUIState.Success(it.data.sukuId)
+                            SukuActionUIState.Success("Data berhasil ditambahkan")
                         } else {
                             SukuActionUIState.Error(it.message)
                         }
@@ -147,7 +153,7 @@ class SukusViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     suku = SukuUIState.Loading,
-                    sukuAction = SukuActionUIState.Idle
+                    sukuAction = SukuActionUIState.Idle // Reset status aksi saat memuat data baru
                 )
             }
             _uiState.update { state ->
