@@ -137,7 +137,7 @@ fun ProfileUI(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = profile.nama,
+                    text = "Lamgok Hando Siahaan", // Mengubah nama sesuai permintaan
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -185,8 +185,8 @@ fun PreviewProfileUI(){
     DelcomTheme {
         ProfileUI(
             profile = ResponseProfile(
-                nama = "Abdullah Ubaid",
-                username = "ifs18005",
+                nama = "Lamgok Hando Siahaan",
+                username = "ifs23002",
                 tentang = ""
             )
         )

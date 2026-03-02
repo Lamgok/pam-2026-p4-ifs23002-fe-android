@@ -1,20 +1,30 @@
 package org.delcom.pam_p4_ifs23002.ui.screens
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -25,11 +35,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
@@ -57,25 +70,19 @@ fun SukusDetailScreen(
     sukusViewModel: SukusViewModel,
     sukuId: String
 ) {
-    // Ambil data dari viewmodel
     val uiState by sukusViewModel.uiState.collectAsState()
     var isLoading by remember { mutableStateOf(false) }
     var isConfirmDelete by remember { mutableStateOf(false) }
-
-    // Muat data
     var suku by remember { mutableStateOf<ResponseSukusData?>(null) }
 
-    // Dapatkan suku berdasarkan ID
     LaunchedEffect(Unit) {
         isLoading = true
-        // Reset status suku action
         sukusViewModel.getSukuById(sukuId)
     }
 
-    // Picu ulang ketika data suku berubah
     LaunchedEffect(uiState.suku) {
-        if(uiState.suku !is SukuUIState.Loading){
-            if(uiState.suku is SukuUIState.Success){
+        if (uiState.suku !is SukuUIState.Loading) {
+            if (uiState.suku is SukuUIState.Success) {
                 suku = (uiState.suku as SukuUIState.Success).data
                 isLoading = false
             } else {
@@ -84,7 +91,7 @@ fun SukusDetailScreen(
         }
     }
 
-    fun onDelete(){
+    fun onDelete() {
         isLoading = true
         sukusViewModel.deleteSuku(sukuId)
     }
@@ -92,37 +99,23 @@ fun SukusDetailScreen(
     LaunchedEffect(uiState.sukuAction) {
         when (val state = uiState.sukuAction) {
             is SukuActionUIState.Success -> {
-                SuspendHelper.showSnackBar(
-                    snackbarHost = snackbarHost,
-                    type = SnackBarType.SUCCESS,
-                    message = state.message
-                )
-                RouteHelper.to(
-                    navController,
-                    ConstHelper.RouteNames.Sukus.path,
-                    true
-                )
+                SuspendHelper.showSnackBar(snackbarHost, SnackBarType.SUCCESS, state.message)
+                RouteHelper.to(navController, ConstHelper.RouteNames.Sukus.path, true)
                 isLoading = false
             }
             is SukuActionUIState.Error -> {
-                SuspendHelper.showSnackBar(
-                    snackbarHost = snackbarHost,
-                    type = SnackBarType.ERROR,
-                    message = state.message
-                )
+                SuspendHelper.showSnackBar(snackbarHost, SnackBarType.ERROR, state.message)
                 isLoading = false
             }
             else -> {}
         }
     }
 
-    // Tampilkan halaman loading
-    if(isLoading || suku == null){
+    if (isLoading || suku == null) {
         LoadingUI()
         return
     }
 
-    // Menu item details
     val detailMenuItems = listOf(
         TopAppBarMenuItem(
             text = "Ubah Data",
@@ -131,8 +124,7 @@ fun SukusDetailScreen(
             onClick = {
                 RouteHelper.to(
                     navController,
-                    ConstHelper.RouteNames.SukusEdit.path
-                        .replace("{sukuId}", suku!!.id),
+                    ConstHelper.RouteNames.SukusEdit.path.replace("{sukuId}", suku!!.id)
                 )
             }
         ),
@@ -140,189 +132,176 @@ fun SukusDetailScreen(
             text = "Hapus Data",
             icon = Icons.Filled.Delete,
             route = null,
-            onClick = {
-                isConfirmDelete = true
-            }
+            onClick = { isConfirmDelete = true }
         ),
     )
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
-    )
-    {
-        // Top App Bar
+            .background(Color(0xFFFFF8F0))
+    ) {
         TopAppBarComponent(
             navController = navController,
             title = suku!!.nama,
             showBackButton = true,
             customMenuItems = detailMenuItems
         )
-        // Content
-        Box(
-            modifier = Modifier
-                .weight(1f)
-        ) {
-            // Content UI
-            SukusDetailUI(
-                suku = suku!!
-            )
-            // Bottom Dialog to Confirmation Delete
+        Box(modifier = Modifier.weight(1f)) {
+            SukusDetailUI(suku = suku!!)
             BottomDialog(
                 type = BottomDialogType.ERROR,
                 show = isConfirmDelete,
                 onDismiss = { isConfirmDelete = false },
-                title = "Konfirmasi Hapus Data",
-                message = "Apakah Anda yakin ingin menghapus data ini?",
-                confirmText = "Ya, Hapus",
-                onConfirm = {
-                    onDelete()
-                },
+                title = "Hapus Budaya?",
+                message = "Apakah Anda yakin ingin menghapus data suku ini dari arsip?",
+                confirmText = "Hapus",
+                onConfirm = { onDelete() },
                 cancelText = "Batal",
                 destructiveAction = true
             )
         }
-        // Bottom Nav
         BottomNavComponent(navController = navController)
     }
 }
 
 @Composable
-fun SukusDetailUI(
-    suku: ResponseSukusData
-) {
+fun SukusDetailUI(suku: ResponseSukusData) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
             .verticalScroll(rememberScrollState())
-    )
-    {
-        // Gambar
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 16.dp)
-        )
-        {
+    ) {
+        // Hero Image
+        Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
             AsyncImage(
                 model = ToolsHelper.getSukusImageUrl(suku.id),
                 contentDescription = suku.nama,
                 placeholder = painterResource(R.drawable.img_placeholder),
                 error = painterResource(R.drawable.img_placeholder),
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // Overlay Gradient
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(250.dp),
-                contentScale = ContentScale.Fit
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
+                        )
+                    )
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(20.dp)
+            ) {
+                Text(
+                    text = "WARISAN BUDAYA",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color(0xFFFFD700), // Gold
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = suku.nama,
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Deskripsi Card
+            InfoCard(
+                title = "Tentang Suku",
+                content = suku.deskripsi,
+                icon = Icons.Default.Info
             )
 
+            Spacer(Modifier.height(16.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Makanan Card
+                Box(modifier = Modifier.weight(1f)) {
+                    InfoCard(
+                        title = "Makanan Khas",
+                        content = suku.makanan,
+                        icon = Icons.Default.Restaurant
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                // Rumah Adat Card
+                Box(modifier = Modifier.weight(1f)) {
+                    InfoCard(
+                        title = "Rumah Adat",
+                        content = suku.rumahadat,
+                        icon = Icons.Default.Home
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(40.dp))
+
+            // Lencana Persatuan
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Public,
+                    contentDescription = null,
+                    tint = Color(0xFFB22222),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = "Bhinneka Tunggal Ika",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFFB22222),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+fun InfoCard(title: String, content: String, icon: ImageVector) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = Color(0xFFB22222)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color(0xFFB22222)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = suku.nama,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                text = content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray,
+                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2
             )
-        }
-
-        // Deskripsi
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Deskripsi",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-                Text(
-                    text = suku.deskripsi,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-        }
-
-        // Makanan Khas
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Makanan Khas",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-                Text(
-                    text = suku.makanan,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-        }
-
-        // Rumah Adat
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Rumah Adat",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-                Text(
-                    text = suku.rumahadat,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
         }
     }
 }
