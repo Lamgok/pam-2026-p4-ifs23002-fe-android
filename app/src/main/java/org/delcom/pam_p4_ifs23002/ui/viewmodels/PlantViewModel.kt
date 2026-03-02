@@ -261,4 +261,12 @@ class PlantViewModel @Inject constructor(
             }
         }
     }
+
+    fun resetPlantAction() {
+        _uiState.update {
+            it.copy(
+                plantAction = PlantActionUIState.Loading
+            )
+        }
+    }
 }

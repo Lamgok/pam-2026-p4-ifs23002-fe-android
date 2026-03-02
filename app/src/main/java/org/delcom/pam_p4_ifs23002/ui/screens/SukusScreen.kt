@@ -100,7 +100,8 @@ fun SukusScreen(
     fun onOpen(sukuId: String) {
         RouteHelper.to(
             navController = navController,
-            destination = "sukus/${sukuId}"
+            destination = ConstHelper.RouteNames.SukusDetail.path
+                .replace("{sukuId}", sukuId)
         )
     }
 
@@ -133,30 +134,24 @@ fun SukusScreen(
                 onOpen = ::onOpen
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-            )
-            {
-                // Floating Action Button
-                FloatingActionButton(
-                    onClick = {
-                        RouteHelper.to(
-                            navController,
-                            ConstHelper.RouteNames.SukusAdd.path
-                        )
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp),
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Tambah Suku"
+            // Floating Action Button diletakkan langsung di dalam Box utama Content
+            FloatingActionButton(
+                onClick = {
+                    RouteHelper.to(
+                        navController,
+                        ConstHelper.RouteNames.SukusAdd.path
                     )
-                }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Tambah Suku"
+                )
             }
         }
         // Bottom Nav
@@ -169,37 +164,40 @@ fun SukusUI(
     sukus: List<ResponseSukusData>,
     onOpen: (String) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        items(sukus) { suku ->
-            SukuItemUI(
-                suku,
-                onOpen
-            )
-        }
-    }
-
     if(sukus.isEmpty()){
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        Box(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "Tidak ada data!",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                elevation = CardDefaults.cardElevation(4.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Text(
+                    text = "Tidak ada data!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            items(sukus) { suku ->
+                SukuItemUI(
+                    suku,
+                    onOpen
+                )
+            }
         }
     }
 }

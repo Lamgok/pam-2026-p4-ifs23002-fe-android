@@ -1,7 +1,7 @@
 package org.delcom.pam_p4_ifs23002.ui.screens
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,9 +12,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -46,6 +43,7 @@ import org.delcom.pam_p4_ifs23002.ui.components.BottomNavComponent
 import org.delcom.pam_p4_ifs23002.ui.components.LoadingUI
 import org.delcom.pam_p4_ifs23002.ui.components.TopAppBarComponent
 import org.delcom.pam_p4_ifs23002.ui.components.TopAppBarMenuItem
+import org.delcom.pam_p4_ifs23002.ui.theme.DelcomTheme
 import org.delcom.pam_p4_ifs23002.ui.viewmodels.SukuActionUIState
 import org.delcom.pam_p4_ifs23002.ui.viewmodels.SukuUIState
 import org.delcom.pam_p4_ifs23002.ui.viewmodels.SukusViewModel
@@ -57,155 +55,113 @@ fun SukusDetailScreen(
     sukusViewModel: SukusViewModel,
     sukuId: String
 ) {
-    // Ambil data dari viewmodel
     val uiState by sukusViewModel.uiState.collectAsState()
-    var isLoading by remember { mutableStateOf(false) }
     var isConfirmDelete by remember { mutableStateOf(false) }
 
-    // Muat data
-    var suku by remember { mutableStateOf<ResponseSukusData?>(null) }
-
-    // Dapatkan suku berdasarkan ID
-    LaunchedEffect(Unit) {
-        isLoading = true
-        // Reset status suku action
+    // Memicu pengambilan data suku berdasarkan ID
+    LaunchedEffect(sukuId) {
         sukusViewModel.getSukuById(sukuId)
     }
 
-    // Picu ulang ketika data suku berubah
-    LaunchedEffect(uiState.suku) {
-        if(uiState.suku !is SukuUIState.Loading){
-            if(uiState.suku is SukuUIState.Success){
-                suku = (uiState.suku as SukuUIState.Success).data
-                isLoading = false
-            } else {
-                RouteHelper.back(navController)
-            }
-        }
-    }
-
-    fun onDelete(){
-        isLoading = true
-        sukusViewModel.deleteSuku(sukuId)
-    }
-
+    // Menangani status aksi (seperti setelah menghapus data)
     LaunchedEffect(uiState.sukuAction) {
         when (val state = uiState.sukuAction) {
             is SukuActionUIState.Success -> {
-                SuspendHelper.showSnackBar(
-                    snackbarHost = snackbarHost,
-                    type = SnackBarType.SUCCESS,
-                    message = state.message
-                )
-                RouteHelper.to(
-                    navController,
-                    ConstHelper.RouteNames.Sukus.path,
-                    true
-                )
-                isLoading = false
+                SuspendHelper.showSnackBar(snackbarHost, SnackBarType.SUCCESS, state.message)
+                RouteHelper.to(navController, ConstHelper.RouteNames.Sukus.path, true)
+                sukusViewModel.resetSukuAction()
             }
             is SukuActionUIState.Error -> {
-                SuspendHelper.showSnackBar(
-                    snackbarHost = snackbarHost,
-                    type = SnackBarType.ERROR,
-                    message = state.message
-                )
-                isLoading = false
+                SuspendHelper.showSnackBar(snackbarHost, SnackBarType.ERROR, state.message)
+                sukusViewModel.resetSukuAction()
             }
             else -> {}
         }
     }
 
-    // Tampilkan halaman loading
-    if(isLoading || suku == null){
+    // State Loading
+    if (uiState.suku is SukuUIState.Loading) {
         LoadingUI()
         return
     }
 
-    // Menu item details
+    // State Error
+    if (uiState.suku is SukuUIState.Error) {
+        LaunchedEffect(Unit) { RouteHelper.back(navController) }
+        return
+    }
+
+    // Pastikan data sukses dimuat
+    val suku = (uiState.suku as? SukuUIState.Success)?.data ?: return
+
+    // Menu item untuk detail (Ubah dan Hapus)
     val detailMenuItems = listOf(
         TopAppBarMenuItem(
             text = "Ubah Data",
             icon = Icons.Filled.Edit,
-            route = null,
             onClick = {
-                RouteHelper.to(
-                    navController,
-                    ConstHelper.RouteNames.SukusEdit.path
-                        .replace("{sukuId}", suku!!.id),
-                )
+                val route = ConstHelper.RouteNames.SukusEdit.path.replace("{sukuId}", suku.id)
+                RouteHelper.to(navController, route)
             }
         ),
         TopAppBarMenuItem(
             text = "Hapus Data",
             icon = Icons.Filled.Delete,
-            route = null,
-            onClick = {
-                isConfirmDelete = true
-            }
+            onClick = { isConfirmDelete = true },
+            isDestructive = true
         ),
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
-    )
-    {
-        // Top App Bar
-        TopAppBarComponent(
-            navController = navController,
-            title = suku!!.nama,
-            showBackButton = true,
-            customMenuItems = detailMenuItems
-        )
-        // Content
-        Box(
+    DelcomTheme {
+        Column(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            // Content UI
-            SukusDetailUI(
-                suku = suku!!
+            TopAppBarComponent(
+                navController = navController,
+                title = suku.nama,
+                showBackButton = true,
+                customMenuItems = detailMenuItems
             )
-            // Bottom Dialog to Confirmation Delete
-            BottomDialog(
-                type = BottomDialogType.ERROR,
-                show = isConfirmDelete,
-                onDismiss = { isConfirmDelete = false },
-                title = "Konfirmasi Hapus Data",
-                message = "Apakah Anda yakin ingin menghapus data ini?",
-                confirmText = "Ya, Hapus",
-                onConfirm = {
-                    onDelete()
-                },
-                cancelText = "Batal",
-                destructiveAction = true
-            )
+            
+            Box(modifier = Modifier.weight(1f)) {
+                SukusDetailUI(suku = suku)
+                
+                // Dialog Konfirmasi Hapus
+                BottomDialog(
+                    type = BottomDialogType.ERROR,
+                    show = isConfirmDelete,
+                    onDismiss = { isConfirmDelete = false },
+                    title = "Konfirmasi Hapus Data",
+                    message = "Apakah Anda yakin ingin menghapus data suku '${suku.nama}' ini?",
+                    confirmText = "Ya, Hapus",
+                    onConfirm = {
+                        isConfirmDelete = false
+                        sukusViewModel.deleteSuku(suku.id)
+                    },
+                    cancelText = "Batal",
+                    destructiveAction = true
+                )
+            }
+            BottomNavComponent(navController = navController)
         }
-        // Bottom Nav
-        BottomNavComponent(navController = navController)
     }
 }
 
 @Composable
-fun SukusDetailUI(
-    suku: ResponseSukusData
-) {
+fun SukusDetailUI(suku: ResponseSukusData) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
-    )
-    {
-        // Gambar
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(vertical = 16.dp)
-        )
-        {
+        ) {
             AsyncImage(
                 model = ToolsHelper.getSukusImageUrl(suku.id),
                 contentDescription = suku.nama,
@@ -222,107 +178,12 @@ fun SukusDetailUI(
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
             )
         }
 
-        // Deskripsi
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Deskripsi",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-                Text(
-                    text = suku.deskripsi,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-        }
-
-        // Makanan Khas
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Makanan Khas",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-                Text(
-                    text = suku.makanan,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-        }
-
-        // Rumah Adat
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Rumah Adat",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-                Text(
-                    text = suku.rumahadat,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-        }
+        DetailContentCard("Deskripsi", suku.deskripsi)
+        DetailContentCard("Makanan Khas", suku.makanan)
+        DetailContentCard("Rumah Adat", suku.rumahadat)
     }
 }

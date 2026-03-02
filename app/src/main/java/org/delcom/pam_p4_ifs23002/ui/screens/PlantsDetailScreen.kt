@@ -12,7 +12,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -31,7 +30,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
@@ -60,158 +58,109 @@ fun PlantsDetailScreen(
     plantViewModel: PlantViewModel,
     plantId: String
 ) {
-    // Ambil data dari viewmodel
-    val uiStatePlant by plantViewModel.uiState.collectAsState()
-    var isLoading by remember { mutableStateOf(false) }
+    val uiState by plantViewModel.uiState.collectAsState()
     var isConfirmDelete by remember { mutableStateOf(false) }
 
-    // Muat data
-    var plant by remember { mutableStateOf<ResponsePlantData?>(null) }
-
-    // Dapatkan tumbuhan berdasarkan ID
-    LaunchedEffect(Unit) {
-        isLoading = true
-        // Reset status plant action
-        uiStatePlant.plantAction = PlantActionUIState.Loading
-        uiStatePlant.plant = PlantUIState.Loading
+    // Memicu pengambilan data tumbuhan berdasarkan ID
+    LaunchedEffect(plantId) {
         plantViewModel.getPlantById(plantId)
     }
 
-    // Picu ulang ketika data tumbuhan berubah
-    LaunchedEffect(uiStatePlant.plant) {
-        if(uiStatePlant.plant !is PlantUIState.Loading){
-            if(uiStatePlant.plant is PlantUIState.Success){
-                plant = (uiStatePlant.plant as PlantUIState.Success).data
-                isLoading = false
-            } else {
-                RouteHelper.back(navController)
-            }
-        }
-    }
-
-    fun onDelete(){
-        isLoading = true
-        plantViewModel.deletePlant(plantId)
-    }
-
-    LaunchedEffect(uiStatePlant.plantAction) {
-        when (val state = uiStatePlant.plantAction) {
+    // Menangani status aksi (seperti setelah menghapus data)
+    LaunchedEffect(uiState.plantAction) {
+        when (val state = uiState.plantAction) {
             is PlantActionUIState.Success -> {
-                SuspendHelper.showSnackBar(
-                    snackbarHost = snackbarHost,
-                    type = SnackBarType.SUCCESS,
-                    message = state.message
-                )
-                RouteHelper.to(
-                    navController,
-                    ConstHelper.RouteNames.Plants.path,
-                    true
-                )
-                uiStatePlant.plant = PlantUIState.Loading
-                isLoading = false
+                SuspendHelper.showSnackBar(snackbarHost, SnackBarType.SUCCESS, state.message)
+                RouteHelper.to(navController, ConstHelper.RouteNames.Plants.path, true)
+                plantViewModel.resetPlantAction()
             }
             is PlantActionUIState.Error -> {
-                SuspendHelper.showSnackBar(
-                    snackbarHost = snackbarHost,
-                    type = SnackBarType.ERROR,
-                    message = state.message
-                )
-                isLoading = false
+                SuspendHelper.showSnackBar(snackbarHost, SnackBarType.ERROR, state.message)
+                plantViewModel.resetPlantAction()
             }
             else -> {}
         }
     }
 
-    // Tampilkan halaman loading
-    if(isLoading || plant == null){
+    // State Loading
+    if (uiState.plant is PlantUIState.Loading) {
         LoadingUI()
         return
     }
 
-    // Menu item details
+    // State Error
+    if (uiState.plant is PlantUIState.Error) {
+        LaunchedEffect(Unit) { RouteHelper.back(navController) }
+        return
+    }
+
+    // Pastikan data sukses dimuat
+    val plant = (uiState.plant as? PlantUIState.Success)?.data ?: return
+
     val detailMenuItems = listOf(
         TopAppBarMenuItem(
             text = "Ubah Data",
             icon = Icons.Filled.Edit,
-            route = null,
             onClick = {
-                RouteHelper.to(
-                    navController,
-                    ConstHelper.RouteNames.PlantsEdit.path
-                        .replace("{plantId}", plant!!.id),
-                )
+                RouteHelper.to(navController, ConstHelper.RouteNames.PlantsEdit.path.replace("{plantId}", plant.id))
             }
         ),
         TopAppBarMenuItem(
             text = "Hapus Data",
             icon = Icons.Filled.Delete,
-            route = null,
-            onClick = {
-                isConfirmDelete = true
-            }
+            onClick = { isConfirmDelete = true }
         ),
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
-    )
-    {
-        // Top App Bar
-        TopAppBarComponent(
-            navController = navController,
-            title = plant!!.nama,
-            showBackButton = true,
-            customMenuItems = detailMenuItems
-        )
-        // Content
-        Box(
+    DelcomTheme {
+        Column(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            // Content UI
-            PlantsDetailUI(
-                plant = plant!!
+            TopAppBarComponent(
+                navController = navController,
+                title = plant.nama,
+                showBackButton = true,
+                customMenuItems = detailMenuItems
             )
-            // Bottom Dialog to Confirmation Delete
-            BottomDialog(
-                type = BottomDialogType.ERROR,
-                show = isConfirmDelete,
-                onDismiss = { isConfirmDelete = false },
-                title = "Konfirmasi Hapus Data",
-                message = "Apakah Anda yakin ingin menghapus data ini?",
-                confirmText = "Ya, Hapus",
-                onConfirm = {
-                    onDelete()
-                },
-                cancelText = "Batal",
-                destructiveAction = true
-            )
+            
+            Box(modifier = Modifier.weight(1f)) {
+                PlantsDetailUI(plant = plant)
+                
+                BottomDialog(
+                    type = BottomDialogType.ERROR,
+                    show = isConfirmDelete,
+                    onDismiss = { isConfirmDelete = false },
+                    title = "Konfirmasi Hapus Data",
+                    message = "Apakah Anda yakin ingin menghapus data ini?",
+                    confirmText = "Ya, Hapus",
+                    onConfirm = {
+                        isConfirmDelete = false
+                        plantViewModel.deletePlant(plant.id)
+                    },
+                    cancelText = "Batal",
+                    destructiveAction = true
+                )
+            }
+            BottomNavComponent(navController = navController)
         }
-        // Bottom Nav
-        BottomNavComponent(navController = navController)
     }
 }
 
 @Composable
-fun PlantsDetailUI(
-    plant: ResponsePlantData
-) {
+fun PlantsDetailUI(plant: ResponsePlantData) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
-    )
-    {
-        // Gambar
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(vertical = 16.dp)
-        )
-        {
+        ) {
             AsyncImage(
                 model = ToolsHelper.getPlantImageUrl(plant.id),
                 contentDescription = plant.nama,
@@ -228,120 +177,41 @@ fun PlantsDetailUI(
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
             )
         }
 
-        // Deskripsi
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Deskripsi",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-                Text(
-                    text = plant.deskripsi,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-
-        }
-
-        // Manfaat
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Manfaat",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-                Text(
-                    text = plant.manfaat,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-
-        }
-
-        // Efek Samping
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            shape = MaterialTheme.shapes.medium,
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        )
-        {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Efek Samping",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
-                )
-                Text(
-                    text = plant.efekSamping,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-
-        }
+        DetailContentCard("Deskripsi", plant.deskripsi)
+        DetailContentCard("Manfaat", plant.manfaat)
+        DetailContentCard("Efek Samping", plant.efekSamping)
     }
 }
 
-@Preview(showBackground = true, name = "Light Mode")
 @Composable
-fun PreviewPlantsDetailUI() {
-    DelcomTheme {
-//        PlantsDetailUI(
-//            plant = DummyData.getPlantsData()[0]
-//        )
+fun DetailContentCard(title: String, content: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Text(
+                text = content,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
     }
 }
