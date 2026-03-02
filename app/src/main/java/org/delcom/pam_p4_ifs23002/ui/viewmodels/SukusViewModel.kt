@@ -14,6 +14,13 @@ import org.delcom.pam_p4_ifs23002.network.sukus.data.ResponseSukusData
 import org.delcom.pam_p4_ifs23002.network.sukus.service.ISukusRepository
 import javax.inject.Inject
 
+// Prefixing with 'Sukus' to avoid Redeclaration error with PlantViewModel
+sealed interface SukusProfileUIState {
+    data class Success(val data: org.delcom.pam_p4_ifs23002.network.sukus.data.ResponseProfile) : SukusProfileUIState
+    data class Error(val message: String) : SukusProfileUIState
+    object Loading : SukusProfileUIState
+}
+
 sealed interface SukusUIState {
     data class Success(val data: List<ResponseSukusData>) : SukusUIState
     data class Error(val message: String) : SukusUIState
@@ -30,13 +37,14 @@ sealed interface SukuActionUIState {
     data class Success(val message: String) : SukuActionUIState
     data class Error(val message: String) : SukuActionUIState
     object Loading : SukuActionUIState
+    object Idle : SukuActionUIState
 }
 
 data class UIStateSukus(
-    val profile: ProfileUIState = ProfileUIState.Loading,
+    val profile: SukusProfileUIState = SukusProfileUIState.Loading,
     val sukus: SukusUIState = SukusUIState.Loading,
     var suku: SukuUIState = SukuUIState.Loading,
-    var sukuAction: SukuActionUIState = SukuActionUIState.Loading
+    var sukuAction: SukuActionUIState = SukuActionUIState.Idle
 )
 
 @HiltViewModel
@@ -47,12 +55,35 @@ class SukusViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UIStateSukus())
     val uiState = _uiState.asStateFlow()
 
+    fun getProfile() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(profile = SukusProfileUIState.Loading)
+            }
+            _uiState.update { state ->
+                val tmpState = runCatching {
+                    repository.getProfile()
+                }.fold(
+                    onSuccess = {
+                        if (it.status == "success" && it.data != null) {
+                            SukusProfileUIState.Success(it.data)
+                        } else {
+                            SukusProfileUIState.Error(it.message)
+                        }
+                    },
+                    onFailure = {
+                        SukusProfileUIState.Error(it.message ?: "Unknown error")
+                    }
+                )
+                state.copy(profile = tmpState)
+            }
+        }
+    }
+
     fun getAllSukus(search: String? = null) {
         viewModelScope.launch {
             _uiState.update {
-                it.copy(
-                    sukus = SukusUIState.Loading
-                )
+                it.copy(sukus = SukusUIState.Loading)
             }
             _uiState.update { state ->
                 val tmpState = runCatching {
@@ -69,10 +100,7 @@ class SukusViewModel @Inject constructor(
                         SukusUIState.Error(it.message ?: "Unknown error")
                     }
                 )
-
-                state.copy(
-                    sukus = tmpState
-                )
+                state.copy(sukus = tmpState)
             }
         }
     }
@@ -86,9 +114,7 @@ class SukusViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             _uiState.update {
-                it.copy(
-                    sukuAction = SukuActionUIState.Loading
-                )
+                it.copy(sukuAction = SukuActionUIState.Loading)
             }
             _uiState.update { state ->
                 val tmpState = runCatching {
@@ -101,8 +127,8 @@ class SukusViewModel @Inject constructor(
                     )
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success") {
-                            SukuActionUIState.Success(it.data?.sukuId ?: "")
+                        if (it.status == "success" && it.data != null) {
+                            SukuActionUIState.Success(it.data.sukuId)
                         } else {
                             SukuActionUIState.Error(it.message)
                         }
@@ -111,10 +137,7 @@ class SukusViewModel @Inject constructor(
                         SukuActionUIState.Error(it.message ?: "Unknown error")
                     }
                 )
-
-                state.copy(
-                    sukuAction = tmpState
-                )
+                state.copy(sukuAction = tmpState)
             }
         }
     }
@@ -123,7 +146,8 @@ class SukusViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                    suku = SukuUIState.Loading
+                    suku = SukuUIState.Loading,
+                    sukuAction = SukuActionUIState.Idle
                 )
             }
             _uiState.update { state ->
@@ -131,20 +155,17 @@ class SukusViewModel @Inject constructor(
                     repository.getSukusById(sukuId)
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success" && it.data != null) {
+                        if (it.status == "success" && it.data?.suku != null) {
                             SukuUIState.Success(it.data.suku)
                         } else {
-                            SukuUIState.Error(it.message)
+                            SukuUIState.Error(it.message ?: "Data tidak ditemukan")
                         }
                     },
                     onFailure = {
                         SukuUIState.Error(it.message ?: "Unknown error")
                     }
                 )
-
-                state.copy(
-                    suku = tmpState
-                )
+                state.copy(suku = tmpState)
             }
         }
     }
@@ -155,13 +176,11 @@ class SukusViewModel @Inject constructor(
         deskripsi: RequestBody,
         makanan: RequestBody,
         rumahadat: RequestBody,
-        file: MultipartBody.Part
+        file: MultipartBody.Part?
     ) {
         viewModelScope.launch {
             _uiState.update {
-                it.copy(
-                    sukuAction = SukuActionUIState.Loading
-                )
+                it.copy(sukuAction = SukuActionUIState.Loading)
             }
             _uiState.update { state ->
                 val tmpState = runCatching {
@@ -185,10 +204,7 @@ class SukusViewModel @Inject constructor(
                         SukuActionUIState.Error(it.message ?: "Unknown error")
                     }
                 )
-
-                state.copy(
-                    sukuAction = tmpState
-                )
+                state.copy(sukuAction = tmpState)
             }
         }
     }
@@ -196,9 +212,7 @@ class SukusViewModel @Inject constructor(
     fun deleteSuku(sukuId: String) {
         viewModelScope.launch {
             _uiState.update {
-                it.copy(
-                    sukuAction = SukuActionUIState.Loading
-                )
+                it.copy(sukuAction = SukuActionUIState.Loading)
             }
             _uiState.update { state ->
                 val tmpState = runCatching {
@@ -217,10 +231,7 @@ class SukusViewModel @Inject constructor(
                         SukuActionUIState.Error(it.message ?: "Unknown error")
                     }
                 )
-
-                state.copy(
-                    sukuAction = tmpState
-                )
+                state.copy(sukuAction = tmpState)
             }
         }
     }

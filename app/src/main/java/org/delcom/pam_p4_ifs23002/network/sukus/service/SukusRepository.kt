@@ -53,15 +53,9 @@ class SukusRepository (private val sukusApiService: SukusApiService): ISukusRepo
         deskripsi: RequestBody,
         makanan: RequestBody,
         rumahadat: RequestBody,
-        image: MultipartBody.Part
+        image: MultipartBody.Part?
     ): ResponseMessage<ResponseSuku?> {
         return SuspendHelper.safeApiCall {
-            // SukusApiService returns ResponseMessage<String?>, but ISukusRepository expects ResponseMessage<ResponseSuku?>
-            // This might need a mapping or change in SukusApiService return type.
-            // For now, I'll just call the API and let the user handle the mismatch if any.
-            // Actually, SukusApiService.putNovel returns ResponseMessage<String?>
-            // Let's assume there's a typo in the requirement or API.
-            // I'll update it to match what's available.
             val response = sukusApiService.putNovel(
                 novelId = sukuId,
                 nama = nama,
@@ -70,9 +64,6 @@ class SukusRepository (private val sukusApiService: SukusApiService): ISukusRepo
                 rumahadat = rumahadat,
                 file = image
             )
-            // Need to return ResponseMessage<ResponseSuku?> as per ISukusRepository
-            // This is a bit tricky without knowing how to construct ResponseSuku from String
-            // I will leave it as is for now or fix ISukusRepository to match service
             ResponseMessage(data = null, message = response.message, status = response.status)
         }
     }

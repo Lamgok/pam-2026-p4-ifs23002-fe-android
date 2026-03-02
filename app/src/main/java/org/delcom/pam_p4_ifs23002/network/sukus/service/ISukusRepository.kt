@@ -35,7 +35,7 @@ interface ISukusRepository {
         deskripsi: RequestBody,
         makanan: RequestBody,
         rumahadat: RequestBody,
-        image: MultipartBody.Part,
+        image: MultipartBody.Part?,
     ): ResponseMessage<ResponseSuku?>
 
     suspend fun deleteSukusById(

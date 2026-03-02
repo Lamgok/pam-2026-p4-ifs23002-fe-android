@@ -61,13 +61,13 @@ class PlantViewModel @Inject constructor(
                     profile = ProfileUIState.Loading
                 )
             }
-            _uiState.update { it ->
+            _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.getProfile()
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success") {
-                            ProfileUIState.Success(it.data!!)
+                        if (it.status == "success" && it.data != null) {
+                            ProfileUIState.Success(it.data)
                         } else {
                             ProfileUIState.Error(it.message)
                         }
@@ -77,7 +77,7 @@ class PlantViewModel @Inject constructor(
                     }
                 )
 
-                it.copy(
+                state.copy(
                     profile = tmpState
                 )
             }
@@ -91,13 +91,13 @@ class PlantViewModel @Inject constructor(
                     plants = PlantsUIState.Loading
                 )
             }
-            _uiState.update { it ->
+            _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.getAllPlants(search)
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success") {
-                            PlantsUIState.Success(it.data!!.plants)
+                        if (it.status == "success" && it.data != null) {
+                            PlantsUIState.Success(it.data.plants)
                         } else {
                             PlantsUIState.Error(it.message)
                         }
@@ -107,7 +107,7 @@ class PlantViewModel @Inject constructor(
                     }
                 )
 
-                it.copy(
+                state.copy(
                     plants = tmpState
                 )
             }
@@ -127,7 +127,7 @@ class PlantViewModel @Inject constructor(
                     plantAction = PlantActionUIState.Loading
                 )
             }
-            _uiState.update { it ->
+            _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.postPlant(
                         nama = nama,
@@ -138,8 +138,8 @@ class PlantViewModel @Inject constructor(
                     )
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success") {
-                            PlantActionUIState.Success(it.data!!.plantId)
+                        if (it.status == "success" && it.data != null) {
+                            PlantActionUIState.Success(it.data.plantId)
                         } else {
                             PlantActionUIState.Error(it.message)
                         }
@@ -149,7 +149,7 @@ class PlantViewModel @Inject constructor(
                     }
                 )
 
-                it.copy(
+                state.copy(
                     plantAction = tmpState
                 )
             }
@@ -163,13 +163,13 @@ class PlantViewModel @Inject constructor(
                     plant = PlantUIState.Loading
                 )
             }
-            _uiState.update { it ->
+            _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.getPlantById(plantId)
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success") {
-                            PlantUIState.Success(it.data!!.plant)
+                        if (it.status == "success" && it.data != null) {
+                            PlantUIState.Success(it.data.plant)
                         } else {
                             PlantUIState.Error(it.message)
                         }
@@ -179,7 +179,7 @@ class PlantViewModel @Inject constructor(
                     }
                 )
 
-                it.copy(
+                state.copy(
                     plant = tmpState
                 )
             }
@@ -200,7 +200,7 @@ class PlantViewModel @Inject constructor(
                     plantAction = PlantActionUIState.Loading
                 )
             }
-            _uiState.update { it ->
+            _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.putPlant(
                         plantId = plantId,
@@ -223,7 +223,7 @@ class PlantViewModel @Inject constructor(
                     }
                 )
 
-                it.copy(
+                state.copy(
                     plantAction = tmpState
                 )
             }
@@ -237,7 +237,7 @@ class PlantViewModel @Inject constructor(
                     plantAction = PlantActionUIState.Loading
                 )
             }
-            _uiState.update { it ->
+            _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.deletePlant(
                         plantId = plantId
@@ -255,7 +255,7 @@ class PlantViewModel @Inject constructor(
                     }
                 )
 
-                it.copy(
+                state.copy(
                     plantAction = tmpState
                 )
             }
