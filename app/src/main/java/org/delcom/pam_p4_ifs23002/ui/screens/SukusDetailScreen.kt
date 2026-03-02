@@ -1,27 +1,15 @@
 package org.delcom.pam_p4_ifs23002.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -37,12 +25,7 @@ import org.delcom.pam_p4_ifs23002.helper.SuspendHelper
 import org.delcom.pam_p4_ifs23002.helper.SuspendHelper.SnackBarType
 import org.delcom.pam_p4_ifs23002.helper.ToolsHelper
 import org.delcom.pam_p4_ifs23002.network.sukus.data.ResponseSukusData
-import org.delcom.pam_p4_ifs23002.ui.components.BottomDialog
-import org.delcom.pam_p4_ifs23002.ui.components.BottomDialogType
-import org.delcom.pam_p4_ifs23002.ui.components.BottomNavComponent
-import org.delcom.pam_p4_ifs23002.ui.components.LoadingUI
-import org.delcom.pam_p4_ifs23002.ui.components.TopAppBarComponent
-import org.delcom.pam_p4_ifs23002.ui.components.TopAppBarMenuItem
+import org.delcom.pam_p4_ifs23002.ui.components.*
 import org.delcom.pam_p4_ifs23002.ui.theme.DelcomTheme
 import org.delcom.pam_p4_ifs23002.ui.viewmodels.SukuActionUIState
 import org.delcom.pam_p4_ifs23002.ui.viewmodels.SukuUIState
@@ -58,12 +41,10 @@ fun SukusDetailScreen(
     val uiState by sukusViewModel.uiState.collectAsState()
     var isConfirmDelete by remember { mutableStateOf(false) }
 
-    // Memicu pengambilan data suku berdasarkan ID
     LaunchedEffect(sukuId) {
         sukusViewModel.getSukuById(sukuId)
     }
 
-    // Menangani status aksi (seperti setelah menghapus data)
     LaunchedEffect(uiState.sukuAction) {
         when (val state = uiState.sukuAction) {
             is SukuActionUIState.Success -> {
@@ -79,22 +60,28 @@ fun SukusDetailScreen(
         }
     }
 
-    // State Loading
+    // Tampilkan Loading
     if (uiState.suku is SukuUIState.Loading) {
         LoadingUI()
         return
     }
 
-    // State Error
+    // Perbaikan: Jangan langsung back, tampilkan pesan error jika data gagal dimuat
     if (uiState.suku is SukuUIState.Error) {
-        LaunchedEffect(Unit) { RouteHelper.back(navController) }
+        val errorMsg = (uiState.suku as SukuUIState.Error).message
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Gagal memuat data: $errorMsg", color = MaterialTheme.colorScheme.error)
+                Button(onClick = { RouteHelper.back(navController) }) {
+                    Text("Kembali")
+                }
+            }
+        }
         return
     }
 
-    // Pastikan data sukses dimuat
     val suku = (uiState.suku as? SukuUIState.Success)?.data ?: return
 
-    // Menu item untuk detail (Ubah dan Hapus)
     val detailMenuItems = listOf(
         TopAppBarMenuItem(
             text = "Ubah Data",
@@ -113,22 +100,20 @@ fun SukusDetailScreen(
     )
 
     DelcomTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            TopAppBarComponent(
-                navController = navController,
-                title = suku.nama,
-                showBackButton = true,
-                customMenuItems = detailMenuItems
-            )
-            
-            Box(modifier = Modifier.weight(1f)) {
+        Scaffold(
+            topBar = {
+                TopAppBarComponent(
+                    navController = navController,
+                    title = suku.nama,
+                    showBackButton = true,
+                    customMenuItems = detailMenuItems
+                )
+            },
+            bottomBar = { BottomNavComponent(navController = navController) }
+        ) { padding ->
+            Box(modifier = Modifier.padding(padding).fillMaxSize()) {
                 SukusDetailUI(suku = suku)
-                
-                // Dialog Konfirmasi Hapus
+
                 BottomDialog(
                     type = BottomDialogType.ERROR,
                     show = isConfirmDelete,
@@ -144,7 +129,6 @@ fun SukusDetailScreen(
                     destructiveAction = true
                 )
             }
-            BottomNavComponent(navController = navController)
         }
     }
 }

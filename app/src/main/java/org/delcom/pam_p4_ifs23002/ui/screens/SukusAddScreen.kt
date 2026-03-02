@@ -32,13 +32,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,7 +44,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
@@ -61,7 +54,6 @@ import org.delcom.pam_p4_ifs23002.helper.AlertType
 import org.delcom.pam_p4_ifs23002.helper.ConstHelper
 import org.delcom.pam_p4_ifs23002.helper.RouteHelper
 import org.delcom.pam_p4_ifs23002.helper.SuspendHelper
-import org.delcom.pam_p4_ifs23002.helper.SuspendHelper.SnackBarType
 import org.delcom.pam_p4_ifs23002.helper.ToolsHelper.toRequestBodyText
 import org.delcom.pam_p4_ifs23002.helper.ToolsHelper.uriToMultipart
 import org.delcom.pam_p4_ifs23002.network.sukus.data.ResponseSukusData
@@ -77,33 +69,28 @@ fun SukusAddScreen(
     snackbarHost: SnackbarHostState,
     sukusViewModel: SukusViewModel
 ) {
-    // Ambil data dari viewmodel
-    val uiState by sukusViewModel.uiState.collectAsState()
-
+    val uiStateSuku by sukusViewModel.uiState.collectAsState()
     var isLoading by remember { mutableStateOf(false) }
     var tmpSuku by remember { mutableStateOf<ResponseSukusData?>(null) }
 
     LaunchedEffect(Unit) {
-        // Reset status suku action
-        uiState.sukuAction = SukuActionUIState.Loading
+        uiStateSuku.sukuAction = SukuActionUIState.Idle
     }
 
-    // Simpan data
     fun onSave(
         context: Context,
         nama: String,
         deskripsi: String,
         makanan: String,
-        rumahadat: String,
+        rumahAdat: String,
         file: Uri
     ) {
         isLoading = true
-
         tmpSuku = ResponseSukusData(
             nama = nama,
             deskripsi = deskripsi,
             makanan = makanan,
-            rumahadat = rumahadat,
+            rumahadat = rumahAdat,
             id = "",
             createdAt = "",
             updatedAt = ""
@@ -112,38 +99,33 @@ fun SukusAddScreen(
         val namaBody = nama.toRequestBodyText()
         val deskripsiBody = deskripsi.toRequestBodyText()
         val makananBody = makanan.toRequestBodyText()
-        val rumahadatBody = rumahadat.toRequestBodyText()
-
+        val rumahAdatBody = rumahAdat.toRequestBodyText()
         val filePart = uriToMultipart(context, file, "file")
 
         sukusViewModel.postSuku(
             nama = namaBody,
             deskripsi = deskripsiBody,
             makanan = makananBody,
-            rumahadat = rumahadatBody,
+            rumahadat = rumahAdatBody,
             file = filePart,
         )
     }
 
-    LaunchedEffect(uiState.sukuAction) {
-        when (val state = uiState.sukuAction) {
+    LaunchedEffect(uiStateSuku.sukuAction) {
+        when (val state = uiStateSuku.sukuAction) {
             is SukuActionUIState.Success -> {
                 SuspendHelper.showSnackBar(
                     snackbarHost = snackbarHost,
-                    type = SnackBarType.SUCCESS,
+                    type = SuspendHelper.SnackBarType.SUCCESS,
                     message = state.message
                 )
-                RouteHelper.to(
-                    navController,
-                    ConstHelper.RouteNames.Sukus.path,
-                    true
-                )
+                RouteHelper.to(navController, ConstHelper.RouteNames.Sukus.path, true)
                 isLoading = false
             }
             is SukuActionUIState.Error -> {
                 SuspendHelper.showSnackBar(
                     snackbarHost = snackbarHost,
-                    type = SnackBarType.ERROR,
+                    type = SuspendHelper.SnackBarType.ERROR,
                     message = state.message
                 )
                 isLoading = false
@@ -152,7 +134,6 @@ fun SukusAddScreen(
         }
     }
 
-    // Tampilkan halaman loading
     if (isLoading) {
         LoadingUI()
         return
@@ -163,23 +144,17 @@ fun SukusAddScreen(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Top App Bar
         TopAppBarComponent(
             navController = navController,
-            title = "Tambah Data",
+            title = "Tambah Data Suku",
             showBackButton = true,
         )
-        // Content
-        Box(
-            modifier = Modifier
-                .weight(1f)
-        ) {
+        Box(modifier = Modifier.weight(1f)) {
             SukusAddUI(
                 tmpSuku = tmpSuku,
                 onSave = ::onSave
             )
         }
-        // Bottom Nav
         BottomNavComponent(navController = navController)
     }
 }
@@ -187,17 +162,9 @@ fun SukusAddScreen(
 @Composable
 fun SukusAddUI(
     tmpSuku: ResponseSukusData?,
-    onSave: (
-        Context,
-        String,
-        String,
-        String,
-        String,
-        Uri
-    ) -> Unit
+    onSave: (Context, String, String, String, String, Uri) -> Unit
 ) {
     val alertState = remember { mutableStateOf(AlertState()) }
-
     var dataFile by remember { mutableStateOf<Uri?>(null) }
     var dataNama by remember { mutableStateOf(tmpSuku?.nama ?: "") }
     var dataDeskripsi by remember { mutableStateOf(tmpSuku?.deskripsi ?: "") }
@@ -205,18 +172,15 @@ fun SukusAddUI(
     var dataRumahAdat by remember { mutableStateOf(tmpSuku?.rumahadat ?: "") }
     val context = LocalContext.current
 
-    // Focus manager
     val focusManager = LocalFocusManager.current
-
     val deskripsiFocus = remember { FocusRequester() }
     val makananFocus = remember { FocusRequester() }
-    val rumahadatFocus = remember { FocusRequester() }
+    val rumahAdatFocus = remember { FocusRequester() }
 
     val imagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        dataFile = uri
-    }
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri: Uri? -> dataFile = uri }
+    )
 
     Column(
         modifier = Modifier
@@ -225,7 +189,6 @@ fun SukusAddUI(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // File Gambar
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
@@ -235,13 +198,7 @@ fun SukusAddUI(
                     .size(150.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer)
-                    .clickable {
-                        imagePicker.launch(
-                            PickVisualMediaRequest(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly
-                            )
-                        )
-                    },
+                    .clickable { imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 contentAlignment = Alignment.Center
             ) {
                 if (dataFile != null) {
@@ -254,258 +211,96 @@ fun SukusAddUI(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Text(
-                        text = "Pilih Gambar",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    Text("Pilih Gambar", color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
-
             Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Tap untuk mengganti gambar",
-                style = MaterialTheme.typography.bodySmall
-            )
+            Text("Tap untuk memilih gambar", style = MaterialTheme.typography.bodySmall)
         }
 
-        // Nama
         OutlinedTextField(
             value = dataNama,
             onValueChange = { dataNama = it },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                focusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
-                cursorColor = MaterialTheme.colorScheme.primaryContainer,
-                unfocusedBorderColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
-            label = {
-                Text(
-                    text = "Nama",
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { deskripsiFocus.requestFocus() }
-            ),
+            label = { Text("Nama Suku") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { deskripsiFocus.requestFocus() })
         )
 
-        // Deskripsi
         OutlinedTextField(
             value = dataDeskripsi,
             onValueChange = { dataDeskripsi = it },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                focusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
-                cursorColor = MaterialTheme.colorScheme.primaryContainer,
-                unfocusedBorderColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
-            label = {
-                Text(
-                    text = "Deskripsi",
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .focusRequester(deskripsiFocus),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { makananFocus.requestFocus() }
-            ),
-            maxLines = 5,
-            minLines = 3
+            label = { Text("Deskripsi") },
+            modifier = Modifier.fillMaxWidth().height(120.dp).focusRequester(deskripsiFocus),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { makananFocus.requestFocus() }),
+            maxLines = 5, minLines = 3
         )
 
-        // Makanan Khas
         OutlinedTextField(
             value = dataMakanan,
             onValueChange = { dataMakanan = it },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                focusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
-                cursorColor = MaterialTheme.colorScheme.primaryContainer,
-                unfocusedBorderColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
-            label = {
-                Text(
-                    text = "Makanan Khas",
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .focusRequester(makananFocus),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Next
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { rumahadatFocus.requestFocus() }
-            ),
-            maxLines = 5,
-            minLines = 3
+            label = { Text("Makanan Khas") },
+            modifier = Modifier.fillMaxWidth().height(120.dp).focusRequester(makananFocus),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { rumahAdatFocus.requestFocus() }),
+            maxLines = 5, minLines = 3
         )
 
-        // Rumah Adat
         OutlinedTextField(
             value = dataRumahAdat,
             onValueChange = { dataRumahAdat = it },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                unfocusedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                focusedBorderColor = MaterialTheme.colorScheme.primaryContainer,
-                cursorColor = MaterialTheme.colorScheme.primaryContainer,
-                unfocusedBorderColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
-            label = {
-                Text(
-                    text = "Rumah Adat",
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .focusRequester(rumahadatFocus),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    focusManager.clearFocus() // menutup keyboard
-                }
-            ),
-            maxLines = 5,
-            minLines = 3
+            label = { Text("Rumah Adat") },
+            modifier = Modifier.fillMaxWidth().height(120.dp).focusRequester(rumahAdatFocus),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+            maxLines = 5, minLines = 3
         )
 
         Spacer(modifier = Modifier.height(64.dp))
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        // Floating Action Button
+    Box(modifier = Modifier.fillMaxSize()) {
         FloatingActionButton(
             onClick = {
-                if (dataFile != null) {
-
-                    if(dataNama.isEmpty()) {
-                        AlertHelper.show(
-                            alertState,
-                            AlertType.ERROR,
-                            "Nama tidak boleh kosong!"
-                        )
-                        return@FloatingActionButton
-                    }
-
-                    if(dataDeskripsi.isEmpty()) {
-                        AlertHelper.show(
-                            alertState,
-                            AlertType.ERROR,
-                            "Deskripsi tidak boleh kosong!"
-                        )
-                        return@FloatingActionButton
-                    }
-
-                    if(dataMakanan.isEmpty()) {
-                        AlertHelper.show(
-                            alertState,
-                            AlertType.ERROR,
-                            "Informasi makanan khas tidak boleh kosong!"
-                        )
-                        return@FloatingActionButton
-                    }
-
-                    if(dataRumahAdat.isEmpty()) {
-                        AlertHelper.show(
-                            alertState,
-                            AlertType.ERROR,
-                            "Informasi rumah adat tidak boleh kosong!"
-                        )
-                        return@FloatingActionButton
-                    }
-
-                    onSave(
-                        context,
-                        dataNama,
-                        dataDeskripsi,
-                        dataMakanan,
-                        dataRumahAdat,
-                        dataFile!!
-                    )
-                } else {
-                    AlertHelper.show(
-                        alertState,
-                        AlertType.ERROR,
-                        "Gambar tidak boleh kosong!"
-                    )
+                if (dataFile == null) {
+                    AlertHelper.show(alertState, AlertType.ERROR, "Gambar tidak boleh kosong!")
                     return@FloatingActionButton
                 }
-
+                if (dataNama.isEmpty()) {
+                    AlertHelper.show(alertState, AlertType.ERROR, "Nama tidak boleh kosong!")
+                    return@FloatingActionButton
+                }
+                if (dataDeskripsi.isEmpty()) {
+                    AlertHelper.show(alertState, AlertType.ERROR, "Deskripsi tidak boleh kosong!")
+                    return@FloatingActionButton
+                }
+                if (dataMakanan.isEmpty()) {
+                    AlertHelper.show(alertState, AlertType.ERROR, "Makanan khas tidak boleh kosong!")
+                    return@FloatingActionButton
+                }
+                if (dataRumahAdat.isEmpty()) {
+                    AlertHelper.show(alertState, AlertType.ERROR, "Rumah adat tidak boleh kosong!")
+                    return@FloatingActionButton
+                }
+                onSave(context, dataNama, dataDeskripsi, dataMakanan, dataRumahAdat, dataFile!!)
             },
-            modifier = Modifier
-                .align(Alignment.BottomEnd) // pojok kanan bawah
-                .padding(16.dp) // jarak dari tepi
-            ,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
-            Icon(
-                imageVector = Icons.Default.Save,
-                contentDescription = "Simpan Data"
-            )
+            Icon(Icons.Default.Save, contentDescription = "Simpan Data")
         }
     }
 
     if (alertState.value.isVisible) {
         AlertDialog(
-            onDismissRequest = {
-                AlertHelper.dismiss(alertState)
-            },
-            title = {
-                Text(alertState.value.type.title)
-            },
-            text = {
-                Text(alertState.value.message)
-            },
+            onDismissRequest = { AlertHelper.dismiss(alertState) },
+            title = { Text(alertState.value.type.title) },
+            text = { Text(alertState.value.message) },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        AlertHelper.dismiss(alertState)
-                    }
-                ) {
-                    Text("OK")
-                }
+                TextButton(onClick = { AlertHelper.dismiss(alertState) }) { Text("OK") }
             }
         )
     }
-}
-
-@Preview(showBackground = true, name = "Light Mode")
-@Composable
-fun PreviewSukusAddUI() {
-//    DelcomTheme {
-//        SukusAddUI(
-//            sukus = DummyData.getSukusAddData(),
-//            onOpen = {}
-//        )
-//    }
 }

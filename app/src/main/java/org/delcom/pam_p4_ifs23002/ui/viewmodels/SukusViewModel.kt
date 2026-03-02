@@ -11,11 +11,12 @@ import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import org.delcom.pam_p4_ifs23002.network.sukus.data.ResponseSukusData
+import org.delcom.pam_p4_ifs23002.network.sukus.data.ResponseProfile
 import org.delcom.pam_p4_ifs23002.network.sukus.service.ISukusRepository
 import javax.inject.Inject
 
 sealed interface SukusProfileUIState {
-    data class Success(val data: org.delcom.pam_p4_ifs23002.network.sukus.data.ResponseProfile) : SukusProfileUIState
+    data class Success(val data: ResponseProfile) : SukusProfileUIState
     data class Error(val message: String) : SukusProfileUIState
     object Loading : SukusProfileUIState
 }
@@ -43,7 +44,7 @@ data class UIStateSukus(
     val profile: SukusProfileUIState = SukusProfileUIState.Loading,
     val sukus: SukusUIState = SukusUIState.Loading,
     var suku: SukuUIState = SukuUIState.Loading,
-    var sukuAction: SukuActionUIState = SukuActionUIState.Idle
+    var sukuAction: SukuActionUIState = SukuActionUIState.Loading
 )
 
 @HiltViewModel
@@ -54,32 +55,21 @@ class SukusViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(UIStateSukus())
     val uiState = _uiState.asStateFlow()
 
-    // Fungsi untuk mereset status aksi agar snackbar tidak muncul berulang
-    fun resetSukuAction() {
-        _uiState.update { state ->
-            state.copy(sukuAction = SukuActionUIState.Idle)
-        }
-    }
-
     fun getProfile() {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(profile = SukusProfileUIState.Loading)
-            }
+            _uiState.update { it.copy(profile = SukusProfileUIState.Loading) }
             _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.getProfile()
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success" && it.data != null) {
+                        if (it.status.equals("success", ignoreCase = true) && it.data != null) {
                             SukusProfileUIState.Success(it.data)
                         } else {
                             SukusProfileUIState.Error(it.message)
                         }
                     },
-                    onFailure = {
-                        SukusProfileUIState.Error(it.message ?: "Unknown error")
-                    }
+                    onFailure = { SukusProfileUIState.Error(it.message ?: "Unknown error") }
                 )
                 state.copy(profile = tmpState)
             }
@@ -88,23 +78,19 @@ class SukusViewModel @Inject constructor(
 
     fun getAllSukus(search: String? = null) {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(sukus = SukusUIState.Loading)
-            }
+            _uiState.update { it.copy(sukus = SukusUIState.Loading) }
             _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.getAllNovels(search)
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success") {
-                            SukusUIState.Success(it.data?.sukus ?: emptyList())
+                        if (it.status.equals("success", ignoreCase = true) && it.data != null) {
+                            SukusUIState.Success(it.data.sukus)
                         } else {
                             SukusUIState.Error(it.message)
                         }
                     },
-                    onFailure = {
-                        SukusUIState.Error(it.message ?: "Unknown error")
-                    }
+                    onFailure = { SukusUIState.Error(it.message ?: "Unknown error") }
                 )
                 state.copy(sukus = tmpState)
             }
@@ -119,9 +105,7 @@ class SukusViewModel @Inject constructor(
         file: MultipartBody.Part
     ) {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(sukuAction = SukuActionUIState.Loading)
-            }
+            _uiState.update { it.copy(sukuAction = SukuActionUIState.Loading) }
             _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.postSukus(
@@ -133,15 +117,13 @@ class SukusViewModel @Inject constructor(
                     )
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success" && it.data != null) {
-                            SukuActionUIState.Success("Data berhasil ditambahkan")
+                        if (it.status.equals("success", ignoreCase = true) && it.data != null) {
+                            SukuActionUIState.Success(it.data.sukuId)
                         } else {
                             SukuActionUIState.Error(it.message)
                         }
                     },
-                    onFailure = {
-                        SukuActionUIState.Error(it.message ?: "Unknown error")
-                    }
+                    onFailure = { SukuActionUIState.Error(it.message ?: "Unknown error") }
                 )
                 state.copy(sukuAction = tmpState)
             }
@@ -150,26 +132,19 @@ class SukusViewModel @Inject constructor(
 
     fun getSukuById(sukuId: String) {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    suku = SukuUIState.Loading,
-                    sukuAction = SukuActionUIState.Idle // Reset status aksi saat memuat data baru
-                )
-            }
+            _uiState.update { it.copy(suku = SukuUIState.Loading) }
             _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.getSukusById(sukuId)
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success" && it.data?.suku != null) {
+                        if (it.status.equals("success", ignoreCase = true) && it.data != null) {
                             SukuUIState.Success(it.data.suku)
                         } else {
                             SukuUIState.Error(it.message ?: "Data tidak ditemukan")
                         }
                     },
-                    onFailure = {
-                        SukuUIState.Error(it.message ?: "Unknown error")
-                    }
+                    onFailure = { SukuUIState.Error(it.message ?: "Unknown error") }
                 )
                 state.copy(suku = tmpState)
             }
@@ -185,9 +160,7 @@ class SukusViewModel @Inject constructor(
         file: MultipartBody.Part?
     ) {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(sukuAction = SukuActionUIState.Loading)
-            }
+            _uiState.update { it.copy(sukuAction = SukuActionUIState.Loading) }
             _uiState.update { state ->
                 val tmpState = runCatching {
                     repository.putSukusById(
@@ -200,15 +173,13 @@ class SukusViewModel @Inject constructor(
                     )
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success") {
+                        if (it.status.equals("success", ignoreCase = true)) {
                             SukuActionUIState.Success(it.message)
                         } else {
                             SukuActionUIState.Error(it.message)
                         }
                     },
-                    onFailure = {
-                        SukuActionUIState.Error(it.message ?: "Unknown error")
-                    }
+                    onFailure = { SukuActionUIState.Error(it.message ?: "Unknown error") }
                 )
                 state.copy(sukuAction = tmpState)
             }
@@ -217,28 +188,26 @@ class SukusViewModel @Inject constructor(
 
     fun deleteSuku(sukuId: String) {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(sukuAction = SukuActionUIState.Loading)
-            }
+            _uiState.update { it.copy(sukuAction = SukuActionUIState.Loading) }
             _uiState.update { state ->
                 val tmpState = runCatching {
-                    repository.deleteSukusById(
-                        sukuId = sukuId
-                    )
+                    repository.deleteSukusById(sukuId = sukuId)
                 }.fold(
                     onSuccess = {
-                        if (it.status == "success") {
+                        if (it.status.equals("success", ignoreCase = true)) {
                             SukuActionUIState.Success(it.message)
                         } else {
                             SukuActionUIState.Error(it.message)
                         }
                     },
-                    onFailure = {
-                        SukuActionUIState.Error(it.message ?: "Unknown error")
-                    }
+                    onFailure = { SukuActionUIState.Error(it.message ?: "Unknown error") }
                 )
                 state.copy(sukuAction = tmpState)
             }
         }
+    }
+
+    fun resetSukuAction() {
+        _uiState.update { it.copy(sukuAction = SukuActionUIState.Loading) }
     }
 }
