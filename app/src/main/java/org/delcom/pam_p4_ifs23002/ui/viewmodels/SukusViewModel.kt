@@ -44,7 +44,7 @@ data class UIStateSukus(
     val profile: SukusProfileUIState = SukusProfileUIState.Loading,
     val sukus: SukusUIState = SukusUIState.Loading,
     var suku: SukuUIState = SukuUIState.Loading,
-    var sukuAction: SukuActionUIState = SukuActionUIState.Loading
+    var sukuAction: SukuActionUIState = SukuActionUIState.Idle
 )
 
 @HiltViewModel
@@ -138,13 +138,14 @@ class SukusViewModel @Inject constructor(
                     repository.getSukusById(sukuId)
                 }.fold(
                     onSuccess = {
-                        if (it.status.equals("success", ignoreCase = true) && it.data != null) {
-                            SukuUIState.Success(it.data.suku)
+                        val sukuData = it.data?.suku
+                        if (it.status.equals("success", ignoreCase = true) && sukuData != null) {
+                            SukuUIState.Success(sukuData)
                         } else {
                             SukuUIState.Error(it.message ?: "Data tidak ditemukan")
                         }
                     },
-                    onFailure = { SukuUIState.Error(it.message ?: "Unknown error") }
+                    onFailure = { SukuUIState.Error(it.message ?: "Terjadi kesalahan jaringan") }
                 )
                 state.copy(suku = tmpState)
             }
@@ -208,6 +209,6 @@ class SukusViewModel @Inject constructor(
     }
 
     fun resetSukuAction() {
-        _uiState.update { it.copy(sukuAction = SukuActionUIState.Loading) }
+        _uiState.update { it.copy(sukuAction = SukuActionUIState.Idle) }
     }
 }

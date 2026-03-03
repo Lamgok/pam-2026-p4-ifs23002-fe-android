@@ -84,6 +84,7 @@ fun SukusScreen(
                             SukuItemUI(
                                 suku = suku,
                                 onClick = {
+                                    // PERBAIKAN: Gunakan format rute yang benar sesuai ConstHelper
                                     val route = ConstHelper.RouteNames.SukusDetail.path.replace("{sukuId}", suku.id)
                                     RouteHelper.to(navController, route)
                                 }

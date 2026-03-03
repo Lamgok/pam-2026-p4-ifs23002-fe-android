@@ -149,7 +149,7 @@ fun UIApp(
                 )
             }
 
-            // Sukus Detail
+            // Sukus Detail - DISAMAKAN DENGAN PLANTS
             composable(
                 route = ConstHelper.RouteNames.SukusDetail.path,
                 arguments = listOf(
@@ -166,7 +166,7 @@ fun UIApp(
                 )
             }
 
-            // Sukus Edit
+            // Sukus Edit - DISAMAKAN DENGAN PLANTS
             composable(
                 route = ConstHelper.RouteNames.SukusEdit.path,
                 arguments = listOf(

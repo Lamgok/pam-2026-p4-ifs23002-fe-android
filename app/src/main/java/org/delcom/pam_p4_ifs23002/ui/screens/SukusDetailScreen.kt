@@ -41,14 +41,17 @@ fun SukusDetailScreen(
     val uiState by sukusViewModel.uiState.collectAsState()
     var isConfirmDelete by remember { mutableStateOf(false) }
 
+    // Memastikan pengambilan data dilakukan saat layar dimuat atau sukuId berubah
     LaunchedEffect(sukuId) {
         sukusViewModel.getSukuById(sukuId)
     }
 
+    // Penanganan Aksi (Edit/Hapus)
     LaunchedEffect(uiState.sukuAction) {
         when (val state = uiState.sukuAction) {
             is SukuActionUIState.Success -> {
                 SuspendHelper.showSnackBar(snackbarHost, SnackBarType.SUCCESS, state.message)
+                // Kembali ke daftar suku setelah aksi berhasil
                 RouteHelper.to(navController, ConstHelper.RouteNames.Sukus.path, true)
                 sukusViewModel.resetSukuAction()
             }
@@ -60,18 +63,19 @@ fun SukusDetailScreen(
         }
     }
 
-    // Tampilkan Loading
+    // State Loading
     if (uiState.suku is SukuUIState.Loading) {
         LoadingUI()
         return
     }
 
-    // Perbaikan: Jangan langsung back, tampilkan pesan error jika data gagal dimuat
+    // State Error
     if (uiState.suku is SukuUIState.Error) {
         val errorMsg = (uiState.suku as SukuUIState.Error).message
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Gagal memuat data: $errorMsg", color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(16.dp))
                 Button(onClick = { RouteHelper.back(navController) }) {
                     Text("Kembali")
                 }
@@ -80,6 +84,7 @@ fun SukusDetailScreen(
         return
     }
 
+    // Pastikan data sukses dimuat
     val suku = (uiState.suku as? SukuUIState.Success)?.data ?: return
 
     val detailMenuItems = listOf(
@@ -144,7 +149,8 @@ fun SukusDetailUI(suku: ResponseSukusData) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp)
+                .padding(vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             AsyncImage(
                 model = ToolsHelper.getSukusImageUrl(suku.id),

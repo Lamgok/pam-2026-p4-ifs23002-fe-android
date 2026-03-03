@@ -1,6 +1,6 @@
 package org.delcom.pam_p4_ifs23002.helper
 
-object ConstHelper { // Gunakan 'object' agar bisa diakses langsung tanpa instansiasi
+object ConstHelper {
     // Route Names
     enum class RouteNames(val path: String) {
         Home(path = "home"),
@@ -15,8 +15,7 @@ object ConstHelper { // Gunakan 'object' agar bisa diakses langsung tanpa instan
         // Sukus
         Sukus(path = "sukus"),
         SukusAdd(path = "sukus/add"),
-        // Pastikan placeholder ini {sukuId} sesuai dengan yang dipanggil di SukusScreen.kt
-        SukusDetail(path = "sukus/detail/{sukuId}"),
-        SukusEdit(path = "sukus/edit/{sukuId}")
+        SukusDetail(path = "sukus/{sukuId}"),
+        SukusEdit(path = "sukus/{sukuId}/edit")
     }
 }
