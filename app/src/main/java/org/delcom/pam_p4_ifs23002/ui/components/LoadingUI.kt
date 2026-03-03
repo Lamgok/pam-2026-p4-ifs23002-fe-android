@@ -4,7 +4,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -30,7 +29,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RippleLoading(
     modifier: Modifier = Modifier,
-    color: Color = Color(0xFFB22222), // Warna merah budaya
+    // Menggunakan warna primary dari tema agar sinkron
+    color: Color = MaterialTheme.colorScheme.primary, 
     iconSize: Dp = 48.dp,
     circleSize: Dp = 40.dp,
     maxSize: Dp = 120.dp,
@@ -44,12 +44,12 @@ fun RippleLoading(
         modifier = modifier.size(maxSize + 20.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Center Icon - Menggunakan Diversity3 untuk melambangkan keragaman
+        // Center Icon - Melambangkan Keragaman
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .background(Color.White, CircleShape)
-                .border(2.dp, color, CircleShape),
+                .background(MaterialTheme.colorScheme.surface, CircleShape)
+                .border(2.dp, color.copy(alpha = 0.5f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -62,7 +62,7 @@ fun RippleLoading(
 
         // Ripple Effect
         repeat(3) { index ->
-            val infiniteTransition = rememberInfiniteTransition()
+            val infiniteTransition = rememberInfiniteTransition(label = "ripple")
 
             val size by infiniteTransition.animateFloat(
                 initialValue = circleSizePx,
@@ -73,11 +73,11 @@ fun RippleLoading(
                         easing = LinearEasing
                     ),
                     initialStartOffset = StartOffset((animationDuration / 3 * index))
-                )
+                ), label = "size"
             )
 
             val alpha by infiniteTransition.animateFloat(
-                initialValue = 1f,
+                initialValue = 0.6f,
                 targetValue = 0f,
                 animationSpec = infiniteRepeatable(
                     animation = tween(
@@ -85,7 +85,7 @@ fun RippleLoading(
                         easing = LinearEasing
                     ),
                     initialStartOffset = StartOffset((animationDuration / 3 * index))
-                )
+                ), label = "alpha"
             )
 
             Box(
@@ -109,7 +109,8 @@ fun LoadingUI() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFFFF8F0).copy(alpha = 0.8f)), // Semi-transparan background
+            // Menggunakan background dari tema agar konsisten (Warm Cream)
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.9f)), 
         contentAlignment = Alignment.Center
     ) {
         RippleLoading()
@@ -119,5 +120,7 @@ fun LoadingUI() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewLoadingUI() {
-    LoadingUI()
+    MaterialTheme {
+        LoadingUI()
+    }
 }

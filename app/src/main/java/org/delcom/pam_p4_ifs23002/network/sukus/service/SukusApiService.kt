@@ -36,27 +36,22 @@ interface SukusApiService {
         @Part file: MultipartBody.Part
     ): ResponseMessage<ResponseSukuAdd?>
 
-    // Ambil data tumbuhan berdasarkan ID
     @GET("sukus/{sukusId}")
     suspend fun getNovelById(
         @Path("sukusId") sukusId: String
     ): ResponseMessage<ResponseSuku?>
 
-
-    // Ubah data tumbuhan
     @Multipart
-    @PUT("/sukus/{sukusId}")
+    @PUT("sukus/{sukusId}")
     suspend fun putNovel(
         @Path("sukusId") novelId: String,
         @Part("nama") nama: RequestBody,
         @Part("deskripsi") deskripsi: RequestBody,
         @Part("makanan") makanan: RequestBody,
         @Part("rumahadat") rumahadat: RequestBody,
-        @Part file: MultipartBody.Part? = null
+        @Part file: MultipartBody.Part? = null // Pastikan nama parameter 'file' sesuai dengan BE
     ): ResponseMessage<String?>
 
-
-    // Hapus data tumbuhan
     @DELETE("sukus/{sukusId}")
     suspend fun deleteNovel(
         @Path("sukusId") sukusId: String
